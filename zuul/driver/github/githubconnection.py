@@ -62,7 +62,7 @@ class GithubWebhookListener():
     def __init__(self, connection):
         self.connection = connection
 
-    def handle_request(self, path, tenant_name, request):
+    def handle_request(self, request, path):
         if request.method != 'POST':
             self.log.debug("Only POST method is allowed.")
             raise webob.exc.HTTPMethodNotAllowed(
