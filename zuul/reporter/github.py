@@ -35,6 +35,7 @@ class GithubReporter(BaseReporter):
         self._create_comment = self.reporter_config.get('comment', False)
         self._merge = self.reporter_config.get('merge', False)
         self._labels = self.reporter_config.get('label', [])
+        self._context = self.reporter_config.get('context', '')
         if not isinstance(self._labels, list):
             self._labels = [self._labels]
 
@@ -76,7 +77,7 @@ class GithubReporter(BaseReporter):
     def setPullStatus(self, pipeline, item):
         owner, project = item.change.project.name.split('/')
         sha = item.change.patchset
-        context = pipeline.name
+        context = self._context or pipeline.name
         state = self._github_status_value
 
         url = ''
@@ -172,6 +173,7 @@ def getSchema():
 
     github_reporter = v.Schema({
         'status': bool,
+        'context': str,
         'comment': bool,
         'merge': bool,
         'label': toList(str),

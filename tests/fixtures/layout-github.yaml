@@ -24,6 +24,34 @@ pipelines:
         status: true
         comment: true
 
+  - name: context-check
+    description: Check with custom context
+    manager: IndependentPipelineManager
+    source: github
+    trigger:
+      github:
+        - event:
+            - pr-open
+            - pr-change
+            - pr-reopen
+          branch: '^master$'
+        - event: pr-comment
+          comment: 'test me'
+    start:
+      github:
+        status: true
+        context: continuous-integration/zuul/check
+    success:
+      github:
+        status: true
+        context: continuous-integration/zuul/check
+        comment: true
+    failure:
+      github:
+        status: true
+        context: continuous-integration/zuul/check
+        comment: true
+
   - name: gate
     description: Gatekeeping
     manager: DependentPipelineManager
@@ -168,3 +196,7 @@ projects:
   - name: org/project1
     check:
       - project-testfile
+
+  - name: org/project2
+    context-check:
+      - project-testcontext

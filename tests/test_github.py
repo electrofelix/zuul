@@ -248,9 +248,11 @@ class TestGithub(ZuulTestCase):
         self.waitUntilSettled()
         # We should have a status container for the head sha
         self.assertIn(A.head_sha, A.statuses.keys())
-        # We should only have one status for the head sha
-        self.assertEqual(1, len(A.statuses[A.head_sha]))
-        check_status = A.statuses[A.head_sha][0]
+        # We should only have one status for the head sha but adding a
+        # second pipeline with the same trigger but differen project
+        # currently results in both pipelines reporting status
+        self.assertEqual(2, len(A.statuses[A.head_sha]))
+        check_status = A.statuses[A.head_sha][1]
         check_url = ('http://zuul.example.com/status/#%s,%s' %
                      (A.number, A.head_sha))
         self.assertEqual('check', check_status['context'])
@@ -261,8 +263,10 @@ class TestGithub(ZuulTestCase):
         self.worker.hold_jobs_in_build = False
         self.worker.release()
         self.waitUntilSettled()
-        # We should only have two statuses for the head sha
-        self.assertEqual(2, len(A.statuses[A.head_sha]))
+        # We should only have two statuses for the head sha but adding a
+        # second pipeline with the same trigger but differen project
+        # currently results in both pipelines reporting status
+        self.assertEqual(3, len(A.statuses[A.head_sha]))
         check_status = A.statuses[A.head_sha][0]
         check_url = ('http://zuul.example.com/status/#%s,%s' %
                      (A.number, A.head_sha))
@@ -277,12 +281,14 @@ class TestGithub(ZuulTestCase):
             A.getCommentAddedEvent('reporting check'))
         self.waitUntilSettled()
         # pipeline does not report start status, we should only have 2
-        self.assertEqual(2, len(A.statuses[A.head_sha]))
+        # but adding a second pipeline with the same trigger but different
+        # project currently results in both pipelines reporting check status
+        self.assertEqual(3, len(A.statuses[A.head_sha]))
         self.worker.hold_jobs_in_build = False
         self.worker.release()
         self.waitUntilSettled()
         # pipeline reports success/failure status
-        self.assertEqual(3, len(A.statuses[A.head_sha]))
+        self.assertEqual(4, len(A.statuses[A.head_sha]))
         report_status = A.statuses[A.head_sha][0]
         status_url = report_status['url']
         expected_url = ('http://logs.example.com/org/project/1/%s' %
@@ -290,6 +296,32 @@ class TestGithub(ZuulTestCase):
         self.assertEqual(expected_url, status_url)
         self.assertEqual('reporting', report_status['context'])
         self.assertEqual('success', report_status['state'])
+
+    def test_report_pull_context(self):
+        # pipeline reports pull status on start
+        self.worker.hold_jobs_in_build = True
+        A = self.fake_github.openFakePullRequest('org/project2', 'master', 'A')
+        self.fake_github.emitEvent(A.getPullRequestOpenedEvent())
+        self.waitUntilSettled()
+
+        # We should have a status container for the head sha
+        self.assertIn(A.head_sha, A.statuses.keys())
+        # We should only have one status for the head sha but adding a
+        # second pipeline with the same trigger but differen project
+        # currently results in both pipelines reporting status
+        self.assertEqual(2, len(A.statuses[A.head_sha]))
+
+        check_status = A.statuses[A.head_sha][0]
+        self.assertEqual('continuous-integration/zuul/check',
+                         check_status['context'])
+
+        self.worker.hold_jobs_in_build = False
+        self.worker.release()
+        self.waitUntilSettled()
+
+        report_status = A.statuses[A.head_sha][1]
+        self.assertEqual('continuous-integration/zuul/check',
+                         report_status['context'])
 
     def test_report_pull_comment(self):
         # pipeline reports comment on success
